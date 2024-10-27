@@ -13,6 +13,10 @@ class SteppingStoneGame {
         this.gameOver = false;
         this.steps = 0;
         this.missClick = null;
+        this.gameStartTime = null;
+        this.currentTime = 0;
+        this.replayButton = null;
+        this.statsElement = document.getElementById('gameStats');
 
         this.resizeCanvas();
         this.generateStones();
@@ -92,6 +96,9 @@ class SteppingStoneGame {
         });
 
         if (tappedStone && (tappedStone.n > this.playerPosition.stone)) {
+            if (this.gameStartTime === null) {
+                this.gameStartTime = Date.now();
+            }
             this.updatePlayerPosition(tappedStone);
             this.targetScrollOffset = this.playerPosition.y - this.canvas.height + this.playerSize;
             this.steps++;
@@ -124,6 +131,12 @@ class SteppingStoneGame {
         this.ctx.arc(this.playerPosition.x, this.playerPosition.y, this.playerSize, 0, Math.PI * 2);
         this.ctx.fill();
 
+        // Update timer
+        this.updateTimer();
+        
+        // Update stats display
+        this.updateStatsDisplay();
+
         if (this.gameOver && this.missClick) {
             // Draw red cross at miss click
             this.ctx.strokeStyle = 'red';
@@ -134,11 +147,6 @@ class SteppingStoneGame {
             this.ctx.moveTo(this.missClick.x + 10, this.missClick.y - 10);
             this.ctx.lineTo(this.missClick.x - 10, this.missClick.y + 10);
             this.ctx.stroke();
-
-            // Display steps
-            this.ctx.fillStyle = 'black';
-            this.ctx.font = '24px Arial';
-            this.ctx.fillText(`Steps: ${this.steps}`, 10, this.scrollOffset + 30);
         }
 
         this.ctx.restore();
@@ -161,7 +169,127 @@ class SteppingStoneGame {
 
         if (!this.gameOver) {
             requestAnimationFrame(this.gameLoop.bind(this));
+        } else {
+            this.displayGameOver();
         }
+    }
+
+    updateTimer() {
+        if (this.gameStartTime !== null && !this.gameOver) {
+            this.currentTime = Date.now() - this.gameStartTime;
+        }
+    }
+
+    updateStatsDisplay() {
+        const timeString = this.formatTime(this.currentTime);
+        this.statsElement.textContent = `Steps: ${this.steps} | Time: ${timeString}`;
+    }
+
+    displayGameOver() {
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        this.ctx.fillStyle = 'white';
+        this.ctx.font = '48px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('Game Over', this.canvas.width / 2, this.canvas.height / 2 - 50);
+
+        this.ctx.font = '24px Arial';
+        const totalMilliseconds = this.currentTime;
+        const minutes = Math.floor(totalMilliseconds / 60000);
+        const seconds = Math.floor((totalMilliseconds % 60000) / 1000);
+        const milliseconds = totalMilliseconds % 1000;
+        const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
+        this.ctx.fillText(`Steps: ${this.steps} | Time: ${timeString}`, this.canvas.width / 2, this.canvas.height / 2 + 50);
+
+        // Add replay button
+        this.addReplayButton();
+    }
+
+    addReplayButton() {
+        const buttonWidth = 200;
+        const buttonHeight = 50;
+        const buttonX = (this.canvas.width - buttonWidth) / 2;
+        const buttonY = this.canvas.height / 2 + 100;
+
+        this.ctx.fillStyle = '#4CAF50';
+        this.ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
+
+        this.ctx.fillStyle = 'white';
+        this.ctx.font = '24px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('Play again', buttonX + buttonWidth / 2, buttonY + buttonHeight / 2);
+
+        this.replayButton = { x: buttonX, y: buttonY, width: buttonWidth, height: buttonHeight };
+
+        // Add click event listener for the replay button
+        this.canvas.addEventListener('click', this.handleReplayClick.bind(this));
+    }
+
+    handleReplayClick(event) {
+        if (!this.gameOver) return;
+
+        const rect = this.canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+
+        if (x >= this.replayButton.x && x <= this.replayButton.x + this.replayButton.width &&
+            y >= this.replayButton.y && y <= this.replayButton.y + this.replayButton.height) {
+            this.resetGame();
+        }
+    }
+
+    resetGame() {
+        // Reset game state
+        this.stones = [];
+        this.playerPosition = { x: 0, y: 0, stone: null };
+        this.scrollOffset = 0;
+        this.targetScrollOffset = 0;
+        this.gameOver = false;
+        this.steps = 0;
+        this.missClick = null;
+        this.gameStartTime = null;
+        this.currentTime = 0;
+
+        // Regenerate stones and reset player position
+        this.generateStones();
+        this.updatePlayerPosition(this.stones[0]);
+
+        // Clear the stats display
+        this.statsElement.textContent = '';
+
+        // Remove the click event listener for the replay button
+        this.canvas.removeEventListener('click', this.handleReplayClick);
+
+        // Restart the game loop
+        this.gameLoop();
+    }
+
+    formatTime(totalMilliseconds) {
+        const minutes = Math.floor(totalMilliseconds / 60000);
+        const seconds = Math.floor((totalMilliseconds % 60000) / 1000);
+        const ms = totalMilliseconds % 1000;
+        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+    }
+
+    displayStepsAndTimer() {
+        this.ctx.save();
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        this.ctx.fillStyle = 'black';
+        this.ctx.font = '24px Arial';
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'top';
+        
+        const totalMilliseconds = this.currentTime;
+        const minutes = Math.floor(totalMilliseconds / 60000);
+        const seconds = Math.floor((totalMilliseconds % 60000) / 1000);
+        const milliseconds = totalMilliseconds % 1000;
+        
+        const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
+        this.ctx.fillText(`Steps: ${this.steps} | Time: ${timeString}`, 10, 30);
+        
+        this.ctx.restore();
     }
 }
 
