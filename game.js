@@ -37,13 +37,48 @@ class SteppingStoneGame {
     generateNewStone() {
         let lastStone = this.stones[this.stones.length - 1];
         const width = this.randomSize();
-        const height = this.randomSize();
+        const height = width * (0.5 + Math.random() * 0.2);
         const gap = this.randomSize();
         const x = Math.random() * (this.canvas.width - width);
         const y = lastStone ? lastStone.y - height - gap : this.canvas.height - height;
         const n = lastStone ? lastStone.n + 1 : 0;
-        const rotation = Math.random() * Math.PI * 2; // Random rotation in radians
-        this.stones.push({ x, y, width, height, n, rotation });
+        const rotation = Math.random() * Math.PI * 2;
+        
+        const baseHue = 20 + Math.random() * 30;
+        const baseSaturation = 5 + Math.random() * 15;
+        const baseLightness = 45 + Math.random() * 20;
+
+        const points = [];
+        const numPoints = 12;
+        for (let i = 0; i < numPoints; i++) {
+            const angle = (i / numPoints) * Math.PI * 2;
+            const radius = (width / 2) * (0.9 + Math.random() * 0.2);
+            points.push({
+                x: Math.cos(angle) * radius,
+                y: Math.sin(angle) * radius * (height / width)
+            });
+        }
+
+        const noisePattern = [];
+        for (let i = 0; i < 8; i++) {
+            noisePattern.push({
+                angle: Math.random() * Math.PI * 2,
+                distance: Math.random() * width / 3,
+                size: Math.random() * width / 8,
+                isLight: Math.random() > 0.5,
+                alpha: 0.03 + Math.random() * 0.05
+            });
+        }
+
+        this.stones.push({ 
+            x, y, width, height, n, rotation,
+            points, noisePattern,
+            color: {
+                hue: baseHue,
+                saturation: baseSaturation,
+                lightness: baseLightness
+            }
+        });
         return y;
     }
     
@@ -114,15 +149,9 @@ class SteppingStoneGame {
         this.ctx.save();
         this.ctx.translate(0, -this.scrollOffset);
 
+        // Draw stones
         this.stones.forEach(stone => {
-            this.ctx.fillStyle = '#33ccff';
-            this.ctx.save();
-            this.ctx.translate(stone.x + stone.width / 2, stone.y + stone.height / 2);
-            this.ctx.rotate(stone.rotation);
-            this.ctx.beginPath();
-            this.ctx.ellipse(0, 0, stone.width / 2, stone.height / 2, 0, 0, 2 * Math.PI);
-            this.ctx.fill();
-            this.ctx.restore();
+            this.drawStone(stone);
         });
 
         // Draw player
@@ -289,6 +318,99 @@ class SteppingStoneGame {
         const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
         this.ctx.fillText(`Steps: ${this.steps} | Time: ${timeString}`, 10, 30);
         
+        this.ctx.restore();
+    }
+
+    drawStone(stone) {
+        this.ctx.save();
+        
+        this.ctx.translate(stone.x + stone.width / 2, stone.y + stone.height / 2);
+        this.ctx.rotate(stone.rotation);
+
+        // Flatter gradient
+        const gradient = this.ctx.createLinearGradient(
+            0, -stone.height / 2,
+            0, stone.height / 2
+        );
+        
+        const baseColor = `hsl(${stone.color.hue}, ${stone.color.saturation}%, ${stone.color.lightness}%)`;
+        const darkerColor = `hsl(${stone.color.hue}, ${stone.color.saturation}%, ${stone.color.lightness - 10}%)`;
+        const darkestColor = `hsl(${stone.color.hue}, ${stone.color.saturation}%, ${stone.color.lightness - 15}%)`;
+
+        gradient.addColorStop(0, baseColor);
+        gradient.addColorStop(0.7, darkerColor);
+        gradient.addColorStop(1, darkestColor);
+
+        this.ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        this.ctx.shadowBlur = 10;
+        this.ctx.shadowOffsetX = 2;
+        this.ctx.shadowOffsetY = 3;
+
+        // Draw irregular stone shape with smooth closing
+        this.ctx.beginPath();
+        
+        // Start from the last point to ensure smooth connection
+        const lastPoint = stone.points[stone.points.length - 1];
+        this.ctx.moveTo(lastPoint.x, lastPoint.y);
+
+        // Draw the entire shape including the closing segment
+        for (let i = 0; i < stone.points.length + 2; i++) {
+            const point = stone.points[i % stone.points.length];
+            const prevPoint = stone.points[(i - 1 + stone.points.length) % stone.points.length];
+            const nextPoint = stone.points[(i + 1) % stone.points.length];
+            
+            const cp1x = prevPoint.x + (point.x - prevPoint.x) * 0.5;
+            const cp1y = prevPoint.y + (point.y - prevPoint.y) * 0.5;
+            const cp2x = point.x + (nextPoint.x - point.x) * 0.5;
+            const cp2y = point.y + (nextPoint.y - point.y) * 0.5;
+            
+            this.ctx.quadraticCurveTo(point.x, point.y, cp2x, cp2y);
+        }
+
+        this.ctx.fillStyle = gradient;
+        this.ctx.fill();
+
+        // Add texture/cracks
+        stone.noisePattern.forEach(noise => {
+            const x = Math.cos(noise.angle) * noise.distance;
+            const y = Math.sin(noise.angle) * noise.distance;
+            
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, noise.size, 0, Math.PI * 2);
+            this.ctx.fillStyle = noise.isLight ? 
+                `hsla(${stone.color.hue}, ${stone.color.saturation}%, ${stone.color.lightness + 10}%, ${noise.alpha})` :
+                `hsla(${stone.color.hue}, ${stone.color.saturation}%, ${stone.color.lightness - 10}%, ${noise.alpha})`;
+            this.ctx.fill();
+        });
+
+        // Subtle top highlight
+        this.ctx.globalAlpha = 0.1;
+        const highlightGradient = this.ctx.createLinearGradient(
+            0, -stone.height / 2,
+            0, stone.height / 4
+        );
+        highlightGradient.addColorStop(0, '#FFFFFF');
+        highlightGradient.addColorStop(1, 'transparent');
+        
+        // Use the same smooth path for the highlight
+        this.ctx.beginPath();
+        this.ctx.moveTo(lastPoint.x, lastPoint.y);
+        for (let i = 0; i < stone.points.length + 2; i++) {
+            const point = stone.points[i % stone.points.length];
+            const prevPoint = stone.points[(i - 1 + stone.points.length) % stone.points.length];
+            const nextPoint = stone.points[(i + 1) % stone.points.length];
+            
+            const cp1x = prevPoint.x + (point.x - prevPoint.x) * 0.5;
+            const cp1y = prevPoint.y + (point.y - prevPoint.y) * 0.5;
+            const cp2x = point.x + (nextPoint.x - point.x) * 0.5;
+            const cp2y = point.y + (nextPoint.y - point.y) * 0.5;
+            
+            this.ctx.quadraticCurveTo(point.x, point.y, cp2x, cp2y);
+        }
+        
+        this.ctx.fillStyle = highlightGradient;
+        this.ctx.fill();
+
         this.ctx.restore();
     }
 }
