@@ -8,8 +8,8 @@ class SteppingStoneGame {
         this.targetScrollOffset = 0;
         this.scrollSpeed = 0.05; // Adjust this value to change animation speed
         this.playerSize = 20; // Define player size
-        this.minStoneSize = 80; 
-        this.maxStoneSize = 140; 
+        this.minStoneSize = 120; 
+        this.maxStoneSize = 200; 
         this.gameOver = false;
         this.steps = 0;
         this.missClick = null;
@@ -22,7 +22,7 @@ class SteppingStoneGame {
         this.horizonY = this.canvas.height / 3;
         this.roadWidth = this.canvas.width * 0.8;
         this.worldEndZ = 0;
-        this.baseStoneZGap = 30; // Reduced from 50
+        this.baseStoneZGap = 15; // Reduced from 30
 
         this.cameraZ = 0;
         this.targetCameraZ = 0;
@@ -58,18 +58,22 @@ class SteppingStoneGame {
         // Perspective Calculation Logic
         const newStoneWorldZ = this.worldEndZ + (Math.random() * this.baseStoneZGap / 2) + this.baseStoneZGap / 2;
         
-        const perspectiveFactor = (newStoneWorldZ * 0.1) + 1;
-        let projectedY = this.horizonY + (this.canvas.height - this.horizonY) / perspectiveFactor;
-        let scale = 1 / perspectiveFactor;
+        // Use the same perspective factor logic as in gameLoop, assuming cameraZ = 0 for initial placement
+        const initialPerspectiveFactor = Math.max(1, (newStoneWorldZ * 0.015) + 1); 
+        let projectedY = this.horizonY + (this.canvas.height - this.horizonY) / initialPerspectiveFactor;
+        let scale = 1 / initialPerspectiveFactor; // This is the stone's initial scale property
 
-        const normalizedY = (projectedY - this.horizonY) / (this.canvas.height - this.horizonY);
-        const currentPathWidth = this.roadWidth * normalizedY;
+        // normalizedY is based on the initial perspective factor
+        const normalizedY = (projectedY - this.horizonY) / (this.canvas.height - this.horizonY); 
+        // Effectively: const normalizedY = 1 / initialPerspectiveFactor;
+        const currentPathWidth = this.roadWidth * normalizedY; // This is pathWidthAtStoneZ for initial placement
 
         const baseWidth = this.randomSize(); 
         const baseHeight = baseWidth * (0.4 + Math.random() * 0.1);
         
-        const stoneWidth = baseWidth * scale; // Initial scaled width
-        const stoneHeight = baseHeight * scale; // Initial scaled height
+        // stoneWidth and stoneHeight are initial scaled dimensions, used for initial x,y, and original scale property
+        const stoneWidth = baseWidth * scale; 
+        const stoneHeight = baseHeight * scale;
 
         // const screenX = this.vanishingPointX + (Math.random() - 0.5) * currentPathWidth; // Old screenX calculation
         const pathWidthAtStoneZ = currentPathWidth; // currentPathWidth is effectively pathWidthAtStoneZ
@@ -84,11 +88,11 @@ class SteppingStoneGame {
         const numPoints = 12;
         for (let i = 0; i < numPoints; i++) {
             const angle = (i / numPoints) * Math.PI * 2;
-            // Generate points based on initial stoneWidth and stoneHeight
-            const radius = (stoneWidth / 2) * (0.9 + Math.random() * 0.2); 
+            // Generate points based on baseWidth and baseHeight
+            const radius = (baseWidth / 2) * (0.9 + Math.random() * 0.2); 
             points.push({
                 x: Math.cos(angle) * radius,
-                y: Math.sin(angle) * radius * (stoneHeight / stoneWidth) 
+                y: Math.sin(angle) * radius * (baseHeight / baseWidth) // Use baseHeight/baseWidth ratio
             });
         }
 
@@ -96,8 +100,8 @@ class SteppingStoneGame {
         for (let i = 0; i < 8; i++) {
             noisePattern.push({
                 angle: Math.random() * Math.PI * 2,
-                distance: Math.random() * stoneWidth / 3, // Use initial stoneWidth
-                size: Math.random() * stoneWidth / 8,    // Use initial stoneWidth
+                distance: Math.random() * baseWidth / 3, // Use baseWidth
+                size: Math.random() * baseWidth / 8,    // Use baseWidth
                 isLight: Math.random() > 0.5,
                 alpha: 0.03 + Math.random() * 0.05
             });
@@ -244,8 +248,8 @@ class SteppingStoneGame {
                 return; 
             }
             
-            // Changed 0.1 to 0.03 and added Math.max(1, ...)
-            const perspectiveFactor = Math.max(1, (relativeZ * 0.03) + 1); 
+            // Changed 0.015 to 0.005
+            const perspectiveFactor = Math.max(1, (relativeZ * 0.005) + 1); 
             stone.currentScale = 1 / perspectiveFactor;
             // Adjust Y to be top of stone, considering its scaled height
             // The formula for screenY should use (stone.baseHeight * stone.currentScale) for the height of the stone itself,
@@ -491,11 +495,14 @@ class SteppingStoneGame {
         // Translate to the stone's calculated screen position (top-left) and then to its center for rotation
         this.ctx.translate(stone.screenX + stone.currentWidth / 2, stone.screenY + stone.currentHeight / 2);
         this.ctx.rotate(stone.rotation);
+        
+        // Apply current scale to the entire stone drawing context
+        this.ctx.scale(stone.currentScale, stone.currentScale);
 
-        // Flatter gradient using currentHeight
+        // Flatter gradient using baseHeight (will be scaled by ctx.scale)
         const gradient = this.ctx.createLinearGradient(
-            0, -stone.currentHeight / 2,
-            0, stone.currentHeight / 2
+            0, -stone.baseHeight / 2,
+            0, stone.baseHeight / 2
         );
         
         const baseColor = `hsl(${stone.color.hue}, ${stone.color.saturation}%, ${stone.color.lightness}%)`;
@@ -507,11 +514,13 @@ class SteppingStoneGame {
         gradient.addColorStop(1, darkestColor);
 
         this.ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-        this.ctx.shadowBlur = 10 * stone.currentScale;
-        this.ctx.shadowOffsetX = 2 * stone.currentScale;
-        this.ctx.shadowOffsetY = 3 * stone.currentScale;
+        // Shadow properties are now base values, as they will be scaled by ctx.scale
+        this.ctx.shadowBlur = 10; 
+        this.ctx.shadowOffsetX = 2;
+        this.ctx.shadowOffsetY = 3;
 
         // Draw irregular stone shape with smooth closing
+        // stone.points are now relative to baseWidth/baseHeight
         this.ctx.beginPath();
         
         // Start from the last point to ensure smooth connection
@@ -520,10 +529,10 @@ class SteppingStoneGame {
         // However, stone.points were generated using initial stoneWidth/Height which included initial scale.
         // So, the points are already in a "scaled space". We just draw them as is, as the canvas context is already scaled by currentWidth/Height effect.
         // The this.ctx.translate and this.ctx.rotate handle the overall position and orientation.
-        // The points themselves define the shape relative to the stone's center (0,0) in its own scaled coordinate system.
+        // The points themselves define the shape relative to the stone's center (0,0) using base dimensions.
 
         const lastPoint = stone.points[stone.points.length - 1];
-        this.ctx.moveTo(lastPoint.x, lastPoint.y); // These points are already at the correct scale relative to stone.width/height
+        this.ctx.moveTo(lastPoint.x, lastPoint.y); 
 
         for (let i = 0; i < stone.points.length + 2; i++) {
             const point = stone.points[i % stone.points.length];
@@ -554,11 +563,11 @@ class SteppingStoneGame {
             this.ctx.fill();
         });
 
-        // Subtle top highlight using currentHeight
+        // Subtle top highlight using baseHeight (will be scaled by ctx.scale)
         this.ctx.globalAlpha = 0.1;
         const highlightGradient = this.ctx.createLinearGradient(
-            0, -stone.currentHeight / 2,
-            0, stone.currentHeight / 4
+            0, -stone.baseHeight / 2,
+            0, stone.baseHeight / 4 
         );
         highlightGradient.addColorStop(0, '#FFFFFF');
         highlightGradient.addColorStop(1, 'transparent');
