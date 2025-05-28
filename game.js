@@ -8,8 +8,8 @@ class SteppingStoneGame {
         this.targetScrollOffset = 0;
         this.scrollSpeed = 0.05; // Adjust this value to change animation speed
         this.playerSize = 20; // Define player size
-        this.minStoneSize = this.playerSize * 2.5; // Minimum stone size
-        this.maxStoneSize = this.minStoneSize + 60; // Maximum stone size
+        this.minStoneSize = 80; 
+        this.maxStoneSize = 140; 
         this.gameOver = false;
         this.steps = 0;
         this.missClick = null;
@@ -22,7 +22,7 @@ class SteppingStoneGame {
         this.horizonY = this.canvas.height / 3;
         this.roadWidth = this.canvas.width * 0.8;
         this.worldEndZ = 0;
-        this.baseStoneZGap = 50;
+        this.baseStoneZGap = 30; // Reduced from 50
 
         this.cameraZ = 0;
         this.targetCameraZ = 0;
@@ -37,6 +37,7 @@ class SteppingStoneGame {
         if (this.stones.length > 0) {
             this.targetPlayerStoneN = this.stones[0].n; // Set target to the first stone's 'n'
         }
+        this.boundHandleReplayClick = this.handleReplayClick.bind(this); // Add bound event handler
         this.addEventListeners();
         this.gameLoop();
     }
@@ -243,11 +244,16 @@ class SteppingStoneGame {
                 return; 
             }
             
-            const perspectiveFactor = (relativeZ * 0.1) + 1; // This 0.1 is a sensitivity factor for perspective
+            // Changed 0.1 to 0.03 and added Math.max(1, ...)
+            const perspectiveFactor = Math.max(1, (relativeZ * 0.03) + 1); 
             stone.currentScale = 1 / perspectiveFactor;
             // Adjust Y to be top of stone, considering its scaled height
-            stone.screenY = this.horizonY + (this.canvas.height - this.horizonY) / perspectiveFactor - (stone.baseHeight * stone.currentScale); 
-            
+            // The formula for screenY should use (stone.baseHeight * stone.currentScale) for the height of the stone itself,
+            // and then subtract that WHOLE scaled height from the projected Y point that represents the stone's base on the ground.
+            // The original projectedY (center of stone on ground if it had no height) was: this.horizonY + (this.canvas.height - this.horizonY) / perspectiveFactor
+            // So, screenY (top of stone) should be: (this.horizonY + (this.canvas.height - this.horizonY) / perspectiveFactor) - (stone.baseHeight * stone.currentScale)
+            stone.screenY = (this.horizonY + (this.canvas.height - this.horizonY) / perspectiveFactor) - (stone.baseHeight * stone.currentScale);
+
             stone.screenX = this.vanishingPointX + (stone.worldXOffsetFromPathCenter * stone.currentScale) - (stone.baseWidth * stone.currentScale) / 2;
             
             stone.currentWidth = stone.baseWidth * stone.currentScale;
@@ -394,7 +400,7 @@ class SteppingStoneGame {
         this.replayButton = { x: buttonX, y: buttonY, width: buttonWidth, height: buttonHeight };
 
         // Add click event listener for the replay button
-        this.canvas.addEventListener('click', this.handleReplayClick.bind(this));
+        this.canvas.addEventListener('click', this.boundHandleReplayClick); // Use bound handler
     }
 
     handleReplayClick(event) {
@@ -413,24 +419,35 @@ class SteppingStoneGame {
     resetGame() {
         // Reset game state
         this.stones = [];
-        this.playerPosition = { x: 0, y: 0, stone: null };
-        this.scrollOffset = 0;
-        this.targetScrollOffset = 0;
+        this.playerPosition = { x: 0, y: 0, stone: null }; // Reset player position object
+        // this.scrollOffset = 0; // No longer used
+        // this.targetScrollOffset = 0; // No longer used
         this.gameOver = false;
         this.steps = 0;
         this.missClick = null;
         this.gameStartTime = null;
         this.currentTime = 0;
 
-        // Regenerate stones and reset player position
-        this.generateStones();
-        this.updatePlayerPosition(this.stones[0]);
+        this.cameraZ = 0; // Reset camera Z
+        this.targetCameraZ = 0; // Reset target camera Z
+        this.worldEndZ = 0; // Reset world end Z for stone generation
+
+        // Regenerate stones
+        this.generateStones(); 
+
+        // Set player to the first stone using targetPlayerStoneN
+        if (this.stones.length > 0) {
+            this.targetPlayerStoneN = this.stones[0].n;
+        } else {
+            this.targetPlayerStoneN = null; // No stones, no target
+        }
+        // Note: The actual update of this.playerPosition.x and .y will happen in the gameLoop.
 
         // Clear the stats display
         this.statsElement.textContent = '';
 
         // Remove the click event listener for the replay button
-        this.canvas.removeEventListener('click', this.handleReplayClick);
+        this.canvas.removeEventListener('click', this.boundHandleReplayClick); // Use bound handler
 
         // Restart the game loop
         this.gameLoop();
