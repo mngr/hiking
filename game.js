@@ -58,12 +58,13 @@ class SteppingStoneGame {
         // Perspective Calculation Logic
         const newStoneWorldZ = this.worldEndZ + (Math.random() * this.baseStoneZGap / 2) + this.baseStoneZGap / 2;
         
-        // Use the same perspective factor logic as in gameLoop, assuming cameraZ = 0 for initial placement
-        const initialPerspectiveFactor = Math.max(1, (newStoneWorldZ * 0.015) + 1); 
+        // Use a less aggressive factor for initial placement to ensure wider horizontal distribution
+        const initialScaleFactorForGeneration = 0.005;
+        const initialPerspectiveFactor = Math.max(1, (newStoneWorldZ * initialScaleFactorForGeneration) + 1); 
         let projectedY = this.horizonY + (this.canvas.height - this.horizonY) / initialPerspectiveFactor;
-        let scale = 1 / initialPerspectiveFactor; // This is the stone's initial scale property
+        let scale = 1 / initialPerspectiveFactor; // This is the stone's initial scale property, reflecting its generation perspective
 
-        // normalizedY is based on the initial perspective factor
+        // normalizedY is based on the initial perspective factor for generation
         const normalizedY = (projectedY - this.horizonY) / (this.canvas.height - this.horizonY); 
         // Effectively: const normalizedY = 1 / initialPerspectiveFactor;
         const currentPathWidth = this.roadWidth * normalizedY; // This is pathWidthAtStoneZ for initial placement
@@ -248,8 +249,8 @@ class SteppingStoneGame {
                 return; 
             }
             
-            // Changed 0.015 to 0.005
-            const perspectiveFactor = Math.max(1, (relativeZ * 0.005) + 1); 
+            // Use a more aggressive factor for dynamic scaling in gameLoop for visual effect
+            const perspectiveFactor = Math.max(1, (relativeZ * 0.02) + 1); 
             stone.currentScale = 1 / perspectiveFactor;
             // Adjust Y to be top of stone, considering its scaled height
             // The formula for screenY should use (stone.baseHeight * stone.currentScale) for the height of the stone itself,
