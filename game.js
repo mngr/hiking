@@ -19,10 +19,10 @@ class SteppingStoneGame {
         this.statsElement = document.getElementById('gameStats');
 
         this.vanishingPointX = this.canvas.width / 2;
-        this.horizonY = this.canvas.height / 3;
-        this.roadWidth = this.canvas.width * 0.8;
+        this.horizonY = this.canvas.height * 0.4; // Changed from canvas.height / 3
+        this.roadWidth = this.canvas.width; // Changed from canvas.width * 0.8
         this.worldEndZ = 0;
-        this.baseStoneZGap = 15; // Reduced from 30
+        this.baseStoneZGap = 25; // Changed from 15
 
         this.cameraZ = 0;
         this.targetCameraZ = 0;
