@@ -8,8 +8,8 @@ class SteppingStoneGame {
         this.targetScrollOffset = 0;
         this.scrollSpeed = 0.05; // Adjust this value to change animation speed
         this.playerSize = 20; // Define player size
-        this.minStoneSize = 120; 
-        this.maxStoneSize = 200; 
+        this.minStoneSize = 120;
+        this.maxStoneSize = 200;
         this.gameOver = false;
         this.steps = 0;
         this.missClick = null;
@@ -60,26 +60,26 @@ class SteppingStoneGame {
         
         // Use a less aggressive factor for initial placement to ensure wider horizontal distribution
         const initialScaleFactorForGeneration = 0.005;
-        const initialPerspectiveFactor = Math.max(1, (newStoneWorldZ * initialScaleFactorForGeneration) + 1); 
+        const initialPerspectiveFactor = Math.max(1, (newStoneWorldZ * initialScaleFactorForGeneration) + 1);
         let projectedY = this.horizonY + (this.canvas.height - this.horizonY) / initialPerspectiveFactor;
         let scale = 1 / initialPerspectiveFactor; // This is the stone's initial scale property, reflecting its generation perspective
 
         // normalizedY is based on the initial perspective factor for generation
-        const normalizedY = (projectedY - this.horizonY) / (this.canvas.height - this.horizonY); 
+        const normalizedY = (projectedY - this.horizonY) / (this.canvas.height - this.horizonY);
         // Effectively: const normalizedY = 1 / initialPerspectiveFactor;
         const currentPathWidth = this.roadWidth * normalizedY; // This is pathWidthAtStoneZ for initial placement
 
-        const baseWidth = this.randomSize(); 
+        const baseWidth = this.randomSize();
         const baseHeight = baseWidth * (0.4 + Math.random() * 0.1);
-        
+
         // stoneWidth and stoneHeight are initial scaled dimensions, used for initial x,y, and original scale property
-        const stoneWidth = baseWidth * scale; 
+        const stoneWidth = baseWidth * scale;
         const stoneHeight = baseHeight * scale;
 
         // const screenX = this.vanishingPointX + (Math.random() - 0.5) * currentPathWidth; // Old screenX calculation
         const pathWidthAtStoneZ = currentPathWidth; // currentPathWidth is effectively pathWidthAtStoneZ
         const worldXOffsetFromPathCenter = (Math.random() - 0.5) * pathWidthAtStoneZ;
-        
+
         const rotation = Math.random() * Math.PI * 2;
         const baseHue = 20 + Math.random() * 30;
         const baseSaturation = 5 + Math.random() * 15;
@@ -90,7 +90,7 @@ class SteppingStoneGame {
         for (let i = 0; i < numPoints; i++) {
             const angle = (i / numPoints) * Math.PI * 2;
             // Generate points based on baseWidth and baseHeight
-            const radius = (baseWidth / 2) * (0.9 + Math.random() * 0.2); 
+            const radius = (baseWidth / 2) * (0.9 + Math.random() * 0.2);
             points.push({
                 x: Math.cos(angle) * radius,
                 y: Math.sin(angle) * radius * (baseHeight / baseWidth) // Use baseHeight/baseWidth ratio
@@ -107,7 +107,7 @@ class SteppingStoneGame {
                 alpha: 0.03 + Math.random() * 0.05
             });
         }
-        
+
         this.worldEndZ = newStoneWorldZ; // Update worldEndZ
 
         this.stones.push({
@@ -169,7 +169,7 @@ class SteppingStoneGame {
         // y = event.clientY - rect.top + this.scrollOffset; // Old y calculation
         // For input, we need to check against the stone's current screen position.
         // This means the y coordinate from the event is directly comparable to stone.screenY
-        y = event.clientY - rect.top; 
+        y = event.clientY - rect.top;
         }
 
     // Find tapped stone based on its current screen properties
@@ -184,7 +184,7 @@ class SteppingStoneGame {
 
         const centerX = checkX + checkWidth / 2;
         const centerY = checkY + checkHeight / 2;
-        
+
         // Rotate point around stone center for click detection
         const rotatedInputX = Math.cos(stone.rotation) * (x - centerX) - Math.sin(stone.rotation) * (y - centerY) + centerX;
         const rotatedInputY = Math.sin(stone.rotation) * (x - centerX) + Math.cos(stone.rotation) * (y - centerY) + centerY;
@@ -241,16 +241,16 @@ class SteppingStoneGame {
 
             if (relativeZ <= 0.1) { // Stone is at or behind camera's near plane (or too close)
                 // Place it far off-screen below and give it zero scale
-                stone.screenY = this.canvas.height + (stone.currentHeight || stone.baseHeight || 200) + 10; 
+                stone.screenY = this.canvas.height + (stone.currentHeight || stone.baseHeight || 200) + 10;
                 stone.currentScale = 0;
                 stone.currentWidth = 0;
                 stone.currentHeight = 0;
                 stone.screenX = this.vanishingPointX; // Center it horizontally when off-screen
-                return; 
+                return;
             }
-            
+
             // Use a more aggressive factor for dynamic scaling in gameLoop for visual effect
-            const perspectiveFactor = Math.max(1, (relativeZ * 0.02) + 1); 
+            const perspectiveFactor = Math.max(1, (relativeZ * 0.02) + 1);
             stone.currentScale = 1 / perspectiveFactor;
             // Adjust Y to be top of stone, considering its scaled height
             // The formula for screenY should use (stone.baseHeight * stone.currentScale) for the height of the stone itself,
@@ -260,7 +260,7 @@ class SteppingStoneGame {
             stone.screenY = (this.horizonY + (this.canvas.height - this.horizonY) / perspectiveFactor) - (stone.baseHeight * stone.currentScale);
 
             stone.screenX = this.vanishingPointX + (stone.worldXOffsetFromPathCenter * stone.currentScale) - (stone.baseWidth * stone.currentScale) / 2;
-            
+
             stone.currentWidth = stone.baseWidth * stone.currentScale;
             stone.currentHeight = stone.baseHeight * stone.currentScale;
         });
@@ -272,7 +272,7 @@ class SteppingStoneGame {
         this.stones.forEach(stone => {
             this.drawStone(stone); // drawStone was updated in Turn 10 to use screenX, screenY, currentWidth etc.
         });
-        
+
         // 5. Update Player Position Drawing (using this.targetPlayerStoneN)
         if (this.targetPlayerStoneN !== null) {
             const playerStone = this.stones.find(s => s.n === this.targetPlayerStoneN);
@@ -336,14 +336,14 @@ class SteppingStoneGame {
         this.stones = this.stones.filter(stone => {
             const relativeZ = stone.worldZ - this.cameraZ;
             const isTooFarBehind = relativeZ < -this.renderDistanceBehind; // Note: renderDistanceBehind is positive
-            
+
             // Check if stone is effectively off-screen below
             // A stone is considered off-screen below if its screenY is past canvas height AND its scale is tiny or zero.
             let offScreenBelow = false;
             if (stone.screenY !== undefined) {
                  offScreenBelow = stone.screenY > this.canvas.height + (stone.currentHeight || 50) || stone.currentScale < 0.01;
             }
-            
+
             return !isTooFarBehind && !offScreenBelow;
         });
 
@@ -438,7 +438,7 @@ class SteppingStoneGame {
         this.worldEndZ = 0; // Reset world end Z for stone generation
 
         // Regenerate stones
-        this.generateStones(); 
+        this.generateStones();
 
         // Set player to the first stone using targetPlayerStoneN
         if (this.stones.length > 0) {
@@ -496,7 +496,7 @@ class SteppingStoneGame {
         // Translate to the stone's calculated screen position (top-left) and then to its center for rotation
         this.ctx.translate(stone.screenX + stone.currentWidth / 2, stone.screenY + stone.currentHeight / 2);
         this.ctx.rotate(stone.rotation);
-        
+
         // Apply current scale to the entire stone drawing context
         this.ctx.scale(stone.currentScale, stone.currentScale);
 
@@ -516,7 +516,7 @@ class SteppingStoneGame {
 
         this.ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
         // Shadow properties are now base values, as they will be scaled by ctx.scale
-        this.ctx.shadowBlur = 10; 
+        this.ctx.shadowBlur = 10;
         this.ctx.shadowOffsetX = 2;
         this.ctx.shadowOffsetY = 3;
 
@@ -533,7 +533,7 @@ class SteppingStoneGame {
         // The points themselves define the shape relative to the stone's center (0,0) using base dimensions.
 
         const lastPoint = stone.points[stone.points.length - 1];
-        this.ctx.moveTo(lastPoint.x, lastPoint.y); 
+        this.ctx.moveTo(lastPoint.x, lastPoint.y);
 
         for (let i = 0; i < stone.points.length + 2; i++) {
             const point = stone.points[i % stone.points.length];
@@ -568,7 +568,7 @@ class SteppingStoneGame {
         this.ctx.globalAlpha = 0.1;
         const highlightGradient = this.ctx.createLinearGradient(
             0, -stone.baseHeight / 2,
-            0, stone.baseHeight / 4 
+            0, stone.baseHeight / 4
         );
         highlightGradient.addColorStop(0, '#FFFFFF');
         highlightGradient.addColorStop(1, 'transparent');
