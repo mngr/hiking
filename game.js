@@ -18,11 +18,11 @@ class SteppingStoneGame {
         this.replayButton = null;
         this.statsElement = document.getElementById('gameStats');
 
-        this.vanishingPointX = this.canvas.width / 2;
-        this.horizonY = this.canvas.height * 0.4; // Changed from canvas.height / 3
-        this.roadWidth = this.canvas.width; // Changed from canvas.width * 0.8
+        // this.vanishingPointX = this.canvas.width / 2; // Moved to resizeCanvas
+        // this.horizonY = this.canvas.height * 0.4; // Moved to resizeCanvas
+        // this.roadWidth = this.canvas.width; // Moved to resizeCanvas
         this.worldEndZ = 0;
-        this.baseStoneZGap = 25; // Changed from 15
+        this.baseStoneZGap = 25;
 
         this.cameraZ = 0;
         this.targetCameraZ = 0;
@@ -45,6 +45,11 @@ class SteppingStoneGame {
     resizeCanvas() {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
+
+        // Update layout properties based on actual canvas dimensions
+        this.vanishingPointX = this.canvas.width / 2;
+        this.horizonY = this.canvas.height * 0.4;
+        this.roadWidth = this.canvas.width;
     }
 
     randomSize() {
@@ -57,7 +62,7 @@ class SteppingStoneGame {
 
         // Perspective Calculation Logic
         const newStoneWorldZ = this.worldEndZ + (Math.random() * this.baseStoneZGap / 2) + this.baseStoneZGap / 2;
-        
+
         // Use a less aggressive factor for initial placement to ensure wider horizontal distribution
         const initialScaleFactorForGeneration = 0.005;
         const initialPerspectiveFactor = Math.max(1, (newStoneWorldZ * initialScaleFactorForGeneration) + 1);
