@@ -68,22 +68,16 @@ export class InputHandler {
 
     handleStoneClick(stone, x, y) {
         const stoneIndex = stone.userData.index;
-        const expectedNext = this.currentStoneIndex + 1;
 
-        if (stoneIndex === expectedNext) {
-            // Valid click - move to this stone
+        // Valid click: any stone ahead of current position (matches original game logic)
+        if (stoneIndex > this.currentStoneIndex) {
             this.currentStoneIndex = stoneIndex;
 
             if (this.onValidClick) {
                 this.onValidClick(stone, x, y);
             }
-        } else if (stoneIndex > expectedNext) {
-            // Clicked a stone that's too far ahead - game over
-            if (this.onInvalidClick) {
-                this.onInvalidClick(x, y, 'skipped');
-            }
         }
-        // Clicking behind current stone is ignored (no penalty)
+        // Clicking behind or on current stone is ignored (no penalty)
     }
 
     handleMissClick(x, y) {
