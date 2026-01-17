@@ -30,6 +30,7 @@ class SteppingStoneGame {
         this.lookAheadDistance = 500; // world Z units to generate new stones
         this.renderDistanceBehind = 50; // world Z units behind camera to cull stones
         this.targetPlayerStoneN = null; // For updating player position
+        this.perspectiveScale = 0.02; // unified perspective factor
 
         this.resizeCanvas();
         this.generateStones();
@@ -63,27 +64,16 @@ class SteppingStoneGame {
         // Perspective Calculation Logic
         const newStoneWorldZ = this.worldEndZ + (Math.random() * this.baseStoneZGap / 2) + this.baseStoneZGap / 2;
 
-        // Use a less aggressive factor for initial placement to ensure wider horizontal distribution
-        const initialScaleFactorForGeneration = 0.005;
-        const initialPerspectiveFactor = Math.max(1, (newStoneWorldZ * initialScaleFactorForGeneration) + 1);
-        let projectedY = this.horizonY + (this.canvas.height - this.horizonY) / initialPerspectiveFactor;
-        let scale = 1 / initialPerspectiveFactor; // This is the stone's initial scale property, reflecting its generation perspective
-
-        // normalizedY is based on the initial perspective factor for generation
-        const normalizedY = (projectedY - this.horizonY) / (this.canvas.height - this.horizonY);
-        // Effectively: const normalizedY = 1 / initialPerspectiveFactor;
-        const currentPathWidth = this.roadWidth * normalizedY; // This is pathWidthAtStoneZ for initial placement
+        const perspectiveFactor = 1 + newStoneWorldZ * this.perspectiveScale;
+        const scale = 1 / perspectiveFactor;
+        const projectedY = this.horizonY + (this.canvas.height - this.horizonY) / perspectiveFactor;
 
         const baseWidth = this.randomSize();
         const baseHeight = baseWidth * (0.4 + Math.random() * 0.1);
 
-        // stoneWidth and stoneHeight are initial scaled dimensions, used for initial x,y, and original scale property
-        const stoneWidth = baseWidth * scale;
-        const stoneHeight = baseHeight * scale;
-
-        // const screenX = this.vanishingPointX + (Math.random() - 0.5) * currentPathWidth; // Old screenX calculation
-        const pathWidthAtStoneZ = currentPathWidth; // currentPathWidth is effectively pathWidthAtStoneZ
-        const worldXOffsetFromPathCenter = (Math.random() - 0.5) * pathWidthAtStoneZ;
+        // Keep the entire stone within the path edges in world space
+        const maxCenterOffset = (this.roadWidth / 2 - baseWidth / 2) * 0.9;
+        const worldXOffsetFromPathCenter = (Math.random() * 2 - 1) * maxCenterOffset;
 
         const rotation = Math.random() * Math.PI * 2;
         const baseHue = 20 + Math.random() * 30;
@@ -116,15 +106,10 @@ class SteppingStoneGame {
         this.worldEndZ = newStoneWorldZ; // Update worldEndZ
 
         this.stones.push({
-            x: this.vanishingPointX + worldXOffsetFromPathCenter - (baseWidth * scale) / 2, // Initial X position
-            y: projectedY - stoneHeight / 2, // Initial Y position
-            width: stoneWidth, // Initial scaled width
-            height: stoneHeight, // Initial scaled height
             baseWidth: baseWidth,
             baseHeight: baseHeight,
             worldZ: newStoneWorldZ,
             worldXOffsetFromPathCenter: worldXOffsetFromPathCenter,
-            scale: scale, // Initial scale
             n, rotation,
             points, noisePattern,
             color: {
@@ -254,8 +239,7 @@ class SteppingStoneGame {
                 return;
             }
 
-            // Use a more aggressive factor for dynamic scaling in gameLoop for visual effect
-            const perspectiveFactor = Math.max(1, (relativeZ * 0.02) + 1);
+            const perspectiveFactor = 1 + relativeZ * this.perspectiveScale;
             stone.currentScale = 1 / perspectiveFactor;
             // Adjust Y to be top of stone, considering its scaled height
             // The formula for screenY should use (stone.baseHeight * stone.currentScale) for the height of the stone itself,
