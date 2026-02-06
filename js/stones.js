@@ -2,20 +2,23 @@ import * as THREE from 'three';
 
 // Stone configuration (ported from original game.js)
 const STONE_CONFIG = {
-    minSize: 0.8,
-    maxSize: 1.4,
-    baseZGap: 3.5,
+    minSize: 0.3,
+    maxSize: 0.7,
+    baseZGap: 0.7,
     pathWidth: 5,
-    lookAheadDistance: 80,
-    renderDistanceBehind: 10
+    lookAheadDistance: 220,
+    renderDistanceBehind: 20
 };
 
 export class StoneManager {
-    constructor(scene) {
+    constructor(scene, environment, assets) {
         this.scene = scene;
+        this.environment = environment;
+        this.assets = assets;
         this.stones = [];
         this.stoneMeshes = []; // For raycasting
-        this.worldEndZ = 0;
+        this.worldEndZ = -3.0;
+        this.stoneIndex = 0;
         this.stoneIndex = 0;
     }
 
@@ -26,14 +29,11 @@ export class StoneManager {
     }
 
     createStoneMaterial(color) {
-        const hue = color.hue / 360;
-        const saturation = color.saturation / 100;
-        const lightness = color.lightness / 100;
-
-        const baseColor = new THREE.Color().setHSL(hue, saturation, lightness);
-
+        if (this.assets) {
+            return this.assets.createStoneMaterial(color);
+        }
         return new THREE.MeshStandardMaterial({
-            color: baseColor,
+            color,
             roughness: 0.9,
             metalness: 0.02,
             flatShading: false,
@@ -44,29 +44,35 @@ export class StoneManager {
     createStoneGeometry(baseWidth, baseHeight, baseColor, seed) {
         const rng = this.seededRandom(seed);
         const radius = baseWidth / 2;
-        const geometry = new THREE.IcosahedronGeometry(radius, 2);
+        const geometry = new THREE.SphereGeometry(radius, 30, 20);
 
         const positions = geometry.attributes.position;
         const colors = [];
         const vertex = new THREE.Vector3();
 
+        const phase = seed * 0.013;
         for (let i = 0; i < positions.count; i++) {
             vertex.fromBufferAttribute(positions, i);
             const normal = vertex.clone().normalize();
 
-            const noise = (rng() - 0.5) * radius * 0.35;
-            const radial = radius * (0.85 + rng() * 0.35) + noise;
+            const noise = (
+                Math.sin(vertex.x * 2.2 + phase) * 0.008 +
+                Math.sin(vertex.z * 2.0 + phase * 1.2) * 0.007 +
+                Math.sin(vertex.y * 1.6 + phase * 0.7) * 0.006
+            ) * radius;
+            const radial = radius * (0.98 + rng() * 0.035) + noise;
             vertex.copy(normal.multiplyScalar(radial));
 
             vertex.y *= baseHeight / radius;
-            if (vertex.y < -baseHeight * 0.45) {
-                vertex.y = -baseHeight * 0.45 + (vertex.y + baseHeight * 0.45) * 0.25;
+            if (vertex.y < -baseHeight * 0.28) {
+                vertex.y = -baseHeight * 0.28 + (vertex.y + baseHeight * 0.28) * 0.12;
             }
 
             positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
 
             const color = baseColor.clone();
-            color.offsetHSL((rng() - 0.5) * 0.04, 0, (rng() - 0.5) * 0.16);
+            const heightTint = THREE.MathUtils.clamp((normal.y + 1) * 0.5, 0, 1);
+            color.offsetHSL((rng() - 0.5) * 0.015, 0, (rng() - 0.5) * 0.06 + heightTint * 0.035);
             colors.push(color.r, color.g, color.b);
         }
 
@@ -86,32 +92,38 @@ export class StoneManager {
         const zGap = (Math.random() * STONE_CONFIG.baseZGap / 2) + STONE_CONFIG.baseZGap / 2;
         const newStoneWorldZ = this.worldEndZ + zGap;
 
-        // Random X offset within the path width
-        const xOffset = (Math.random() - 0.5) * STONE_CONFIG.pathWidth;
-
         const baseWidth = this.randomSize();
-        const baseHeight = baseWidth * (0.4 + Math.random() * 0.1);
+        const baseHeight = baseWidth * (0.14 + Math.random() * 0.06);
+
+        const centerX = this.environment ? this.environment.getCreekCenterX(newStoneWorldZ) : 0;
+        const creekWidth = this.environment ? this.environment.getCreekWidth(newStoneWorldZ) : STONE_CONFIG.pathWidth;
+        const halfWidth = Math.max(0.2, creekWidth * 0.4 - baseWidth * 0.35);
+        const randomOffset = (Math.random() - 0.5) * 2 * halfWidth * 0.9;
+        const xOffset = n === 0 ? centerX : THREE.MathUtils.clamp(centerX + randomOffset, centerX - halfWidth, centerX + halfWidth);
 
         // Random rotation around Y axis
         const rotation = Math.random() * Math.PI * 2;
 
         // Stone color (earthy browns/greys)
-        const color = {
-            hue: 18 + Math.random() * 25,
-            saturation: 4 + Math.random() * 12,
-            lightness: 35 + Math.random() * 25
-        };
-
-        const baseColor = new THREE.Color().setHSL(color.hue / 360, color.saturation / 100, color.lightness / 100);
+        const baseColor = new THREE.Color().setHSL(
+            0.08 + Math.random() * 0.08,
+            0.08 + Math.random() * 0.08,
+            0.38 + Math.random() * 0.2
+        );
         const seed = Math.floor(Math.random() * 100000);
 
         // Create 3D stone mesh
         const geometry = this.createStoneGeometry(baseWidth, baseHeight, baseColor, seed);
-        const material = this.createStoneMaterial(color);
+        const material = this.createStoneMaterial(baseColor);
         const mesh = new THREE.Mesh(geometry, material);
 
-        mesh.position.set(xOffset, 0, newStoneWorldZ);
+        const bedHeight = this.environment ? this.environment.getBedHeight(xOffset, newStoneWorldZ) : 0;
+        const waterLevel = this.environment ? this.environment.getWaterLevel(newStoneWorldZ) : bedHeight;
+        const bedAnchor = bedHeight + baseHeight * 0.22;
+        const floatAnchor = waterLevel - baseHeight * 0.45;
+        mesh.position.set(xOffset, Math.max(bedAnchor, floatAnchor), newStoneWorldZ);
         mesh.rotation.y = rotation;
+        mesh.rotation.z = (Math.random() - 0.5) * 0.15;
         mesh.castShadow = true;
         mesh.receiveShadow = true;
 
@@ -122,7 +134,7 @@ export class StoneManager {
             xOffset: xOffset,
             baseWidth: baseWidth,
             baseHeight: baseHeight,
-            color: color
+            color: baseColor
         };
 
         this.scene.add(mesh);
@@ -134,7 +146,7 @@ export class StoneManager {
         return mesh;
     }
 
-    generateInitialStones(count = 25) {
+    generateInitialStones(count = 110) {
         this.worldEndZ = 0;
         for (let i = 0; i < count; i++) {
             this.generateNewStone();

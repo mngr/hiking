@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 
 export class PlayerCamera {
-    constructor(camera) {
+    constructor(camera, environment) {
         this.camera = camera;
+        this.environment = environment;
         this.currentStoneIndex = 0;
 
         // Camera positioning
-        this.heightAboveStone = 1.6; // Eye level height
+        this.heightAboveStone = 1.45; // Eye level height
         this.behindStone = 0.3; // Camera offset behind current stone
         this.lookAheadDistance = 8; // How far ahead to look
 
@@ -34,28 +35,42 @@ export class PlayerCamera {
         this.targetCameraZ = 0;
     }
 
-    setTargetStone(stone) {
+    setTargetStone(stone, immediate = false) {
         const stonePos = stone.position;
         const stoneIndex = stone.userData.index;
+        const creekX = this.environment ? this.environment.getCreekCenterX(stonePos.z) : 0;
+        const followX = THREE.MathUtils.lerp(creekX, stonePos.x, 0.6);
 
         this.currentStoneIndex = stoneIndex;
 
         // Position camera above and slightly behind the stone
         this.targetPosition.set(
-            stonePos.x * 0.3, // Reduce horizontal sway for comfort
+            followX,
             stonePos.y + this.heightAboveStone,
             stonePos.z - this.behindStone
         );
 
         // Look ahead along the path
+        const lookZ = stonePos.z + this.lookAheadDistance;
+        const lookCreekX = this.environment ? this.environment.getCreekCenterX(lookZ) : creekX;
         this.targetLookAt.set(
-            stonePos.x * 0.1, // Slight bias toward center
-            stonePos.y + 0.3,
-            stonePos.z + this.lookAheadDistance
+            THREE.MathUtils.lerp(lookCreekX, stonePos.x, 0.35),
+            stonePos.y + 0.2,
+            lookZ
         );
 
         // Update camera Z for stone generation/culling
         this.targetCameraZ = stonePos.z;
+
+        if (immediate) {
+            this.camera.position.copy(this.targetPosition);
+            this.currentLookAt.copy(this.targetLookAt);
+            this.camera.lookAt(this.currentLookAt);
+            this.positionVelocity.set(0, 0, 0);
+            this.lookVelocity.set(0, 0, 0);
+            this.cameraZ = this.targetCameraZ;
+            this.cameraZVelocity = 0;
+        }
     }
 
     update(deltaTime) {
@@ -93,11 +108,13 @@ export class PlayerCamera {
         this.cameraZ = 0;
         this.targetCameraZ = 0;
 
+        const startX = this.environment ? this.environment.getCreekCenterX(0) : 0;
+
         // Reset to starting position
-        this.camera.position.set(0, this.heightAboveStone, -1);
-        this.targetPosition.set(0, this.heightAboveStone, -1);
-        this.targetLookAt.set(0, 0.5, 10);
-        this.currentLookAt.set(0, 0.5, 10);
+        this.camera.position.set(startX, this.heightAboveStone, -1);
+        this.targetPosition.set(startX, this.heightAboveStone, -1);
+        this.targetLookAt.set(startX, 0.5, 10);
+        this.currentLookAt.set(startX, 0.5, 10);
         this.positionVelocity.set(0, 0, 0);
         this.lookVelocity.set(0, 0, 0);
         this.cameraZVelocity = 0;

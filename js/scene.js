@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 export function createScene() {
     const scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(0x87CEEB, 50, 200);
+    scene.fog = new THREE.Fog(0xbfd3d1, 35, 220);
     return scene;
 }
 
@@ -41,32 +41,32 @@ export function createRenderer() {
 
 export function createLighting(scene) {
     // Ambient light - soft overall illumination
-    const ambientLight = new THREE.AmbientLight(0x6699CC, 0.4);
+    const ambientLight = new THREE.AmbientLight(0x8fb2b1, 0.35);
     scene.add(ambientLight);
 
     // Hemisphere light - natural sky-ground gradient
     const hemiLight = new THREE.HemisphereLight(
-        0x87CEEB, // Sky blue
-        0x3D2817, // Earth brown
-        0.5
+        0xbad7ff,
+        0x4a3b2c,
+        0.55
     );
     hemiLight.position.set(0, 50, 0);
     scene.add(hemiLight);
 
     // Directional light - sun with shadows
-    const sunLight = new THREE.DirectionalLight(0xFFFAE5, 1.5);
-    sunLight.position.set(30, 80, 40);
+    const sunLight = new THREE.DirectionalLight(0xfff1d2, 1.25);
+    sunLight.position.set(45, 70, 35);
     sunLight.castShadow = true;
 
     // Shadow camera setup for good coverage
     sunLight.shadow.mapSize.width = 2048;
     sunLight.shadow.mapSize.height = 2048;
     sunLight.shadow.camera.near = 1;
-    sunLight.shadow.camera.far = 200;
-    sunLight.shadow.camera.left = -50;
-    sunLight.shadow.camera.right = 50;
-    sunLight.shadow.camera.top = 50;
-    sunLight.shadow.camera.bottom = -50;
+    sunLight.shadow.camera.far = 220;
+    sunLight.shadow.camera.left = -70;
+    sunLight.shadow.camera.right = 70;
+    sunLight.shadow.camera.top = 70;
+    sunLight.shadow.camera.bottom = -70;
     sunLight.shadow.bias = -0.0001;
     sunLight.shadow.normalBias = 0.02;
 

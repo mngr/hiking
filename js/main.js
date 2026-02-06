@@ -5,6 +5,7 @@ import { StoneManager } from './stones.js';
 import { PlayerCamera } from './player.js';
 import { InputHandler } from './input.js';
 import { UIManager } from './ui.js';
+import { AssetManager } from './assets.js';
 
 class SteppingStones3D {
     constructor() {
@@ -21,26 +22,31 @@ class SteppingStones3D {
         createLighting(this.scene);
         handleResize(this.camera, this.renderer);
 
+        this.assets = new AssetManager(this.renderer);
+
         // Environment
-        this.environment = createEnvironment(this.scene);
+        this.environment = createEnvironment(this.scene, this.assets);
 
         // Stone management
-        this.stoneManager = new StoneManager(this.scene);
+        this.stoneManager = new StoneManager(this.scene, this.environment, this.assets);
         this.stoneManager.generateInitialStones();
 
         // Player camera
-        this.playerCamera = new PlayerCamera(this.camera);
-
-        // Set initial camera target to first stone
-        const firstStone = this.stoneManager.getStoneByIndex(0);
-        if (firstStone) {
-            this.playerCamera.setTargetStone(firstStone);
-        }
+        this.playerCamera = new PlayerCamera(this.camera, this.environment);
 
         // Input handling
         this.inputHandler = new InputHandler(this.camera, this.renderer, this.stoneManager);
         this.inputHandler.onValidClick = this.handleValidClick.bind(this);
         this.inputHandler.onInvalidClick = this.handleInvalidClick.bind(this);
+
+        // Set initial camera target to first stone
+        const firstStone = this.stoneManager.getStoneByIndex(0);
+        if (firstStone) {
+            this.playerCamera.setTargetStone(firstStone, true);
+            this.inputHandler.setCurrentStoneIndex(firstStone.userData.index);
+        }
+
+        this.environment.update(this.playerCamera.getCameraZ(), 0);
 
         // UI
         this.ui = new UIManager();
@@ -92,8 +98,11 @@ class SteppingStones3D {
         // Set initial target to first stone
         const firstStone = this.stoneManager.getStoneByIndex(0);
         if (firstStone) {
-            this.playerCamera.setTargetStone(firstStone);
+            this.playerCamera.setTargetStone(firstStone, true);
+            this.inputHandler.setCurrentStoneIndex(firstStone.userData.index);
         }
+
+        this.environment.update(this.playerCamera.getCameraZ(), 0);
     }
 
     updateTimer() {
@@ -120,7 +129,7 @@ class SteppingStones3D {
         this.stoneManager.updateStones(this.playerCamera.getCameraZ());
 
         // Update environment (generate/remove segments)
-        this.environment.update(this.playerCamera.getCameraZ());
+        this.environment.update(this.playerCamera.getCameraZ(), deltaTime);
 
         // Render
         this.renderer.render(this.scene, this.camera);
