@@ -19,6 +19,12 @@ export class StoneManager {
         this.stoneIndex = 0;
     }
 
+    seededRandom(seed) {
+        let s = seed % 2147483647;
+        if (s <= 0) s += 2147483646;
+        return () => (s = (s * 16807) % 2147483647) / 2147483647;
+    }
+
     createStoneMaterial(color) {
         const hue = color.hue / 360;
         const saturation = color.saturation / 100;
@@ -28,33 +34,43 @@ export class StoneManager {
 
         return new THREE.MeshStandardMaterial({
             color: baseColor,
-            roughness: 0.75,
-            metalness: 0.05,
-            flatShading: false
+            roughness: 0.9,
+            metalness: 0.02,
+            flatShading: false,
+            vertexColors: true
         });
     }
 
-    createStoneGeometry(baseWidth, baseHeight) {
-        // Create an organic rounded stone using a deformed sphere
-        const geometry = new THREE.SphereGeometry(baseWidth / 2, 16, 12);
+    createStoneGeometry(baseWidth, baseHeight, baseColor, seed) {
+        const rng = this.seededRandom(seed);
+        const radius = baseWidth / 2;
+        const geometry = new THREE.IcosahedronGeometry(radius, 2);
 
         const positions = geometry.attributes.position;
+        const colors = [];
         const vertex = new THREE.Vector3();
 
         for (let i = 0; i < positions.count; i++) {
             vertex.fromBufferAttribute(positions, i);
+            const normal = vertex.clone().normalize();
 
-            // Flatten into ellipsoid shape (stone-like)
-            vertex.y *= 0.25 + Math.random() * 0.05;
+            const noise = (rng() - 0.5) * radius * 0.35;
+            const radial = radius * (0.85 + rng() * 0.35) + noise;
+            vertex.copy(normal.multiplyScalar(radial));
 
-            // Add organic noise for irregular shape
-            const noise = (Math.random() - 0.5) * baseWidth * 0.08;
-            vertex.x += noise;
-            vertex.z += noise * 0.7;
+            vertex.y *= baseHeight / radius;
+            if (vertex.y < -baseHeight * 0.45) {
+                vertex.y = -baseHeight * 0.45 + (vertex.y + baseHeight * 0.45) * 0.25;
+            }
 
             positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
+
+            const color = baseColor.clone();
+            color.offsetHSL((rng() - 0.5) * 0.04, 0, (rng() - 0.5) * 0.16);
+            colors.push(color.r, color.g, color.b);
         }
 
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
         geometry.computeVertexNormals();
         return geometry;
     }
@@ -79,15 +95,18 @@ export class StoneManager {
         // Random rotation around Y axis
         const rotation = Math.random() * Math.PI * 2;
 
-        // Stone color (earthy browns)
+        // Stone color (earthy browns/greys)
         const color = {
-            hue: 20 + Math.random() * 30,
-            saturation: 5 + Math.random() * 15,
-            lightness: 45 + Math.random() * 20
+            hue: 18 + Math.random() * 25,
+            saturation: 4 + Math.random() * 12,
+            lightness: 35 + Math.random() * 25
         };
 
+        const baseColor = new THREE.Color().setHSL(color.hue / 360, color.saturation / 100, color.lightness / 100);
+        const seed = Math.floor(Math.random() * 100000);
+
         // Create 3D stone mesh
-        const geometry = this.createStoneGeometry(baseWidth, baseHeight);
+        const geometry = this.createStoneGeometry(baseWidth, baseHeight, baseColor, seed);
         const material = this.createStoneMaterial(color);
         const mesh = new THREE.Mesh(geometry, material);
 

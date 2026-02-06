@@ -22,7 +22,7 @@ class SteppingStones3D {
         handleResize(this.camera, this.renderer);
 
         // Environment
-        createEnvironment(this.scene);
+        this.environment = createEnvironment(this.scene);
 
         // Stone management
         this.stoneManager = new StoneManager(this.scene);
@@ -87,6 +87,7 @@ class SteppingStones3D {
         this.playerCamera.reset();
         this.inputHandler.reset();
         this.ui.reset();
+        this.environment.reset();
 
         // Set initial target to first stone
         const firstStone = this.stoneManager.getStoneByIndex(0);
@@ -117,6 +118,9 @@ class SteppingStones3D {
 
         // Update stones (generate/remove based on camera position)
         this.stoneManager.updateStones(this.playerCamera.getCameraZ());
+
+        // Update environment (generate/remove segments)
+        this.environment.update(this.playerCamera.getCameraZ());
 
         // Render
         this.renderer.render(this.scene, this.camera);
