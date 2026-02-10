@@ -14,8 +14,8 @@ Open `http://localhost:8000` in your browser.
 
 ## Controls
 
-- Click or tap on a stone to step forward.
-- Missing a stone ends the run.
+- Click or tap on a stone within jump range to step forward.
+- Missing a stone or jumping too far ends the run.
 
 ## Notes
 
