@@ -7,7 +7,8 @@ const STONE_CONFIG = {
     baseZGap: 0.7,
     pathWidth: 5,
     lookAheadDistance: 220,
-    renderDistanceBehind: 20
+    renderDistanceBehind: 20,
+    maxJumpDistance: 3.2
 };
 
 export class StoneManager {

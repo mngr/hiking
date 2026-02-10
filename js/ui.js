@@ -3,6 +3,7 @@ export class UIManager {
         this.statsElement = document.getElementById('game-stats');
         this.gameOverElement = document.getElementById('game-over');
         this.finalStatsElement = document.getElementById('final-stats');
+        this.finalReasonElement = document.getElementById('final-reason');
         this.replayButton = document.getElementById('replay-btn');
         this.missIndicator = document.getElementById('miss-indicator');
 
@@ -32,9 +33,10 @@ export class UIManager {
         return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
     }
 
-    showGameOver(steps, time) {
+    showGameOver(steps, time, reason) {
         const timeString = this.formatTime(time);
         this.finalStatsElement.textContent = `Steps: ${steps} | Time: ${timeString}`;
+        this.finalReasonElement.textContent = this.getReasonText(reason);
         this.gameOverElement.classList.add('visible');
     }
 
@@ -42,10 +44,12 @@ export class UIManager {
         this.gameOverElement.classList.remove('visible');
     }
 
-    showMissIndicator(x, y) {
+    showMissIndicator(x, y, reason) {
         this.missIndicator.style.left = `${x}px`;
         this.missIndicator.style.top = `${y}px`;
         this.missIndicator.style.opacity = '1';
+        this.missIndicator.style.color = reason === 'tooFar' ? '#ffb24d' : '#ff3333';
+        this.missIndicator.textContent = reason === 'tooFar' ? '!' : '×';
         this.missIndicator.style.animation = 'fadeOut 0.5s ease-out forwards';
 
         // Reset animation after completion
@@ -58,5 +62,16 @@ export class UIManager {
     reset() {
         this.statsElement.textContent = 'Steps: 0 | Time: 00:00.000';
         this.hideGameOver();
+        this.finalReasonElement.textContent = '';
+    }
+
+    getReasonText(reason) {
+        if (reason === 'tooFar') {
+            return 'Too far to jump.';
+        }
+        if (reason === 'water') {
+            return 'Missed the stone.';
+        }
+        return '';
     }
 }

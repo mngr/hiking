@@ -73,11 +73,11 @@ class SteppingStones3D {
     handleInvalidClick(x, y, reason) {
         this.gameOver = true;
         this.inputHandler.setEnabled(false);
-        this.ui.showMissIndicator(x, y);
+        this.ui.showMissIndicator(x, y, reason);
 
         // Show game over after a short delay
         setTimeout(() => {
-            this.ui.showGameOver(this.steps, this.currentTime);
+            this.ui.showGameOver(this.steps, this.currentTime, reason);
         }, 300);
     }
 

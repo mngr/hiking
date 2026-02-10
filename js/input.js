@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { STONE_CONFIG } from './stones.js';
 
 export class InputHandler {
     constructor(camera, renderer, stoneManager) {
@@ -71,6 +72,20 @@ export class InputHandler {
 
         // Valid click: any stone ahead of current position (matches original game logic)
         if (stoneIndex > this.currentStoneIndex) {
+            const currentStone = this.stoneManager.getStoneByIndex(this.currentStoneIndex);
+            if (currentStone) {
+                const dx = stone.position.x - currentStone.position.x;
+                const dz = stone.position.z - currentStone.position.z;
+                const distance = Math.hypot(dx, dz);
+                const currentRadius = (currentStone.userData.baseWidth || 0) * 0.5;
+                const targetRadius = (stone.userData.baseWidth || 0) * 0.5;
+                const edgeGap = Math.max(0, distance - currentRadius - targetRadius);
+                if (edgeGap > STONE_CONFIG.maxJumpDistance) {
+                    this.handleMissClick(x, y, 'tooFar');
+                    return;
+                }
+            }
+
             this.currentStoneIndex = stoneIndex;
 
             if (this.onValidClick) {
@@ -80,10 +95,10 @@ export class InputHandler {
         // Clicking behind or on current stone is ignored (no penalty)
     }
 
-    handleMissClick(x, y) {
+    handleMissClick(x, y, reason = 'water') {
         // Clicked water/environment - game over
         if (this.onInvalidClick) {
-            this.onInvalidClick(x, y, 'water');
+            this.onInvalidClick(x, y, reason);
         }
     }
 
